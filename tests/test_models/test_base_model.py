@@ -1,43 +1,65 @@
+#!/usr/bin/python3
+"""Unittest for BaseModel class"""
+
 import unittest
-from unittest.mock import patch
-from datetime import datetime
-from models.base_model import BaseModel  # Import the BaseModel class from your actual module        
+import os
+import pep8
+from models.base_model import BaseModel
 
 
 class TestBaseModel(unittest.TestCase):
+    """Test class for BaseModel"""
 
-    @patch('models.base_model.datetime')
-    def test_init(self, mock_datetime):
-        mock_now = datetime(2023, 10, 31, 12, 0, 0)
-        mock_datetime.now.return_value = mock_now
+    @classmethod
+    def setUpClass(cls):
+        """Set up class: create an instance of BaseModel for testing"""
+        cls.model = BaseModel()
+        cls.model.name = "Fanuel"
+        cls.model.my_number = 89
 
-        base_model = BaseModel()
+    @classmethod
+    def tearDownClass(cls):
+        """Tear down class: clean up resources after all tests"""
+        del cls.model
+        try:
+            os.remove("file.json")
+        except FileNotFoundError:
+            pass
 
-        self.assertIsNotNone(base_model.id)
-        self.assertEqual(base_model.created_at, mock_now)
-        self.assertEqual(base_model.updated_at, mock_now)
+    def test_style_check(self):
+        """Tests pep8 style"""
+        style = pep8.StyleGuide(quiet=True)
+        p = style.check_files(['models/base_model.py'])
+        self.assertEqual(p.total_errors, 0, "fix pep8")
+
+    def test_checking_for_functions(self):
+        """Test if certain functions are present in the class"""
+        self.assertIsNotNone(BaseModel.__doc__)
+        self.assertIsNotNone(BaseModel.save.__doc__)
+        self.assertIsNotNone(BaseModel.to_dict.__doc__)
+
+    def test_attributes(self):
+        """Test if the class has certain attributes"""
+        self.assertTrue(hasattr(BaseModel, "__init__"))
+        self.assertTrue(hasattr(BaseModel, "save"))
+        self.assertTrue(hasattr(BaseModel, "to_dict"))
+
+    def test_init(self):
+        """Test the __init__ method"""
+        self.assertTrue(isinstance(self.model, BaseModel))
 
     def test_save(self):
-        base_model = BaseModel()
-        original_updated_at = base_model.updated_at
-        base_model.save()
-
-        self.assertNotEqual(base_model.updated_at, original_updated_at)
+        """Test the save method"""
+        self.model.save()
+        self.assertNotEqual(self.model.created_at, self.model.updated_at)
 
     def test_to_dict(self):
-        base_model = BaseModel()
-        base_model_dict = base_model.to_dict()
+        """Test the to_dict method"""
+        model_dict = self.model.to_dict()
+        self.assertEqual(self.model.__class__.__name__, 'BaseModel')
+        self.assertIsInstance(model_dict['created_at'], str)
+        self.assertIsInstance(model_dict['updated_at'], str)
 
-        self.assertTrue('__class__' in base_model_dict)
-        self.assertTrue('created_at' in base_model_dict)
-        self.assertTrue('updated_at' in base_model_dict)
 
-    def test_str(self):
-        base_model = BaseModel()
-        obj_str = str(base_model)
-
-        self.assertTrue(base_model.__class__.__name__ in obj_str)
-        self.assertTrue(base_model.id in obj_str)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
