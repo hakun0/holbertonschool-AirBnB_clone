@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-""" first class base """
+"""BaseModel class that defines common attributes/methods for other classes"""
 
 import uuid
 from datetime import datetime
@@ -7,54 +7,54 @@ import models
 
 
 class BaseModel:
-    """ class Basemodel """
+    """Define all command and attributes for other classes"""
 
     def __init__(self, *args, **kwargs):
-        """ Constructor for BaseModel """
-
+        """Define consctructor"""
         if kwargs:
             for key, value in kwargs.items():
-                if key == "__class__":
+                if key == '__class__':
                     continue
-
-                if key in ["created_at", "updated_at"]:
-                    value = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f")
-
-                setattr(self, key, value)
+                elif key in ['created_at', 'updated_at']:
+                    try:
+                        date_value = datetime.fromisoformat(value)
+                    except ValueError:
+                        raise ValueError(
+                            "Invalid date format for {}: {}".format(
+                                key, value))
+                    setattr(self, key, date_value)
+                else:
+                    setattr(self, key, value)
         else:
-            """if kwargs is empty"""
             self.id = str(uuid.uuid4())
             self.created_at = datetime.now()
             self.updated_at = datetime.now()
-        models.storage.new(self)
-
-    def save(self):
-        """ to save the updated d.time """
-
-        self.updated_at = datetime.now()
-        models.storage.save()
-
-    def to_dict(self):
-        """
-            Return a dictionary representation of the instance.
-            returns:
-            dict: A dictionary containing instance attributes
-            and a __class__ key.
-            Converts created_at and updated_at
-            to string objects in ISO format.
-        """
-        class_name = self.__class__.__name__
-        instance_dict = self.__dict__.copy()
-        instance_dict['__class__'] = class_name
-
-        """ to convert """
-        instance_dict['created_at'] = self.created_at.isoformat()
-        instance_dict['updated_at'] = self.created_at.isoformat()
-        return instance_dict
 
     def __str__(self):
-        """ Return a string representation of the instance """
+        """Return the string representation of BaseModel."""
         return "[{}] ({}) {}".format(
-                self.__class__.__name__, self.id,
-                self.__dict__
-        )
+            type(self).__name__, self.id, self.__dict__)
+
+    def save(self):
+        """update the instanse update attribute and call save on storage"""
+        self.updated_at = datetime.now()
+        try:
+            models.storage.new(self)
+            models.storage.save()
+        except Exception as e:
+            print("Error saving instance: {}".format(e))
+            raise
+
+    def to_dict(self):
+        """Create a dictionary that contains the values of the instance"""
+        model_dict = {'__class__': type(self).__name__}
+
+        for key, value in self.__dict__.items():
+            if key in ['created_at', 'updated_at']:
+                if hasattr(value, 'isoformat'):
+                    model_dict[key] = value.isoformat()
+                else:
+                    model_dict[key] = value
+            else:
+                model_dict[key] = value
+        return model_dict

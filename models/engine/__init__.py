@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-""" create file storage """
+"""Package initializer"""
 from models.engine.file_storage import FileStorage
 
 

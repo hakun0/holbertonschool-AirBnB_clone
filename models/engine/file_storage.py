@@ -1,52 +1,70 @@
 #!/usr/bin/python3
-"""Filestorage class"""
+"""FileStorage class for serialize and deserialize objects"""
 
 import json
 from models.base_model import BaseModel
+from datetime import datetime
 from models.user import User
-from models.place import Place
 from models.state import State
 from models.city import City
 from models.amenity import Amenity
+from models.place import Place
 from models.review import Review
 
 
 class FileStorage:
-    """ class to serialize instance to json and deserialize
-        json file to instance
-    """
+    """Manage serialization/deserialization of objects to/from json"""
 
+    # path to the JSON file and dictionary to store object
     __file_path = "file.json"
     __objects = {}
+    class_dict = {"BaseModel": BaseModel, "User": User, "Place": Place,
+                  "Amenity": Amenity, "City": City, "Review": Review,
+                  "State": State}
 
-    def all(self):
-        """ Returns the dictionary __objects """
-        return FileStorage.__objects
+    def all(self, cls=None):
+        """return the dictionary object or filtered by cls"""
+        if cls is not None:
+            return {
+                key: obj
+                for key, obj in self.__objects.items() if isinstance(
+                    obj, cls)
+            }
+        return self.__objects
 
     def new(self, obj):
-        """sets in __objects the obj with key <obj class name>.id"""
-        if obj is not None:
-            key = "{}.{}".format(obj.__class__.__name__, obj.id)
-            FileStorage.__objects[key] = obj
+        """Add to the dictionary __objects the obj in format class name.id"""
+        key = "{}.{}".format(type(obj).__name__, obj.id)
+        self.__objects[key] = obj
+        self.save()
 
     def save(self):
-        """ Serializes __objects to the JSON file
-            (path: __file_path)
-        """
-        serialized_objects = {}
+        """serialize __objects to the JSON file"""
+        obj_dict = {}
+        for key, value in FileStorage.__objects.items():
+            obj_dict[key] = value.to_dict()
 
-        for key, obj in FileStorage.__objects.items():
-            serialized_objects[key] = obj.to_dict()
-
-        with open(FileStorage.__file_path, 'w', encoding='utf-8') as file:
-            json.dump(serialized_objects, file)
+        with open(FileStorage.__file_path, 'w') as file:
+            json.dump(obj_dict, file)
 
     def reload(self):
-        """deserializes the JSON file to __objects"""
+        """deserialize the JSON file to __objects"""
         try:
-            with open(self.__file_path, 'r') as f:
-                jo = json.load(f)
-            for key in jo:
-                self.__objects[key] = classes[jo[key]["__class__"]](**jo[key])
-        except:
+            with open(FileStorage.__file_path, 'r') as file:
+                obj_dict = json.load(file)
+                for key, value in obj_dict.items():
+                    class_name, obj_id = key.rsplit('.', 1)
+                    value['created_at'] = datetime.strptime(
+                        value['created_at'], "%Y-%m-%dT%H:%M:%S.%f")
+                    value['updated_at'] = datetime.strptime(
+                        value['updated_at'], "%Y-%m-%dT%H:%M:%S.%f")
+                    # convert value in strins
+                    for k, v in value.items():
+                        if isinstance(v, datetime):
+                            value[k] = v.isoformat()
+
+                    obj_class = globals()[class_name]
+                    obj_instance = obj_class(**value)
+                    self.__objects[key] = obj_instance
+        except FileNotFoundError:
             pass
